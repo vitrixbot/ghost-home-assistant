@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Ghost",
-        "description": "Create a custom integration in Ghost Settings → Integrations to get your Admin API key.",
+        "description": "[Create a custom integration]({docs_url}) to get your API URL and Admin API key.",
         "data": {
           "api_url": "API URL",
           "admin_api_key": "Admin API Key"
