@@ -4,7 +4,6 @@ from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from homeassistant.core import HomeAssistant
 
 from custom_components.ghost.const import CONF_ADMIN_API_KEY, CONF_API_URL, DOMAIN
@@ -13,8 +12,7 @@ pytest_plugins = "pytest_homeassistant_custom_component"
 
 API_URL = "https://test.ghost.io"
 API_KEY = (
-    "650b7a9f8e8c1234567890ab:"
-    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    "650b7a9f8e8c1234567890ab:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 )
 
 

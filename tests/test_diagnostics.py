@@ -32,7 +32,7 @@ async def test_diagnostics(
 
     # Check API key is redacted
     assert diagnostics["entry_data"][CONF_ADMIN_API_KEY] == "**REDACTED**"
-    
+
     # Check API URL is not redacted
     assert CONF_API_URL in diagnostics["entry_data"]
     assert diagnostics["entry_data"][CONF_API_URL] != "**REDACTED**"

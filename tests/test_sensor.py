@@ -1,14 +1,8 @@
 """Tests for Ghost sensors."""
 
-from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
-
-from custom_components.ghost.const import DOMAIN
 
 from .conftest import API_URL
 
@@ -16,11 +10,6 @@ try:
     from homeassistant.helpers.entity_component import async_update_entity
 except ImportError:
     async_update_entity = None
-
-try:
-    from pytest_homeassistant_custom_component.common import async_fire_time_changed
-except ImportError:
-    from homeassistant.util.dt import utcnow as async_fire_time_changed
 
 
 async def test_sensors_created(
@@ -206,7 +195,8 @@ async def test_device_info(
     hass: HomeAssistant, mock_ghost_api: AsyncMock, mock_config_entry, mock_ghost_data
 ) -> None:
     """Test device info is set correctly."""
-    from homeassistant.helpers import device_registry as dr, entity_registry as er
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
 
     mock_config_entry.add_to_hass(hass)
 

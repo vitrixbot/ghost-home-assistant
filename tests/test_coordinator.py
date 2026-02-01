@@ -1,16 +1,13 @@
 """Tests for Ghost data coordinator."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.ghost.coordinator import GhostDataUpdateCoordinator
-
-from .conftest import API_URL
 
 
 async def test_coordinator_update(
@@ -121,9 +118,7 @@ async def test_coordinator_name(hass: HomeAssistant, mock_ghost_api: AsyncMock) 
     assert coordinator.name == "Ghost (My Site)"
 
 
-async def test_coordinator_update_interval(
-    hass: HomeAssistant, mock_ghost_api: AsyncMock
-) -> None:
+async def test_coordinator_update_interval(hass: HomeAssistant, mock_ghost_api: AsyncMock) -> None:
     """Test coordinator has correct update interval."""
     from datetime import timedelta
 

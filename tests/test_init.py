@@ -2,13 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-
-from custom_components.ghost.const import DOMAIN
 
 
 async def test_setup_entry(

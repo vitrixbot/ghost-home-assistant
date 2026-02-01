@@ -2,9 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from aiohttp import web
-
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import async_capture_events
 
@@ -22,17 +20,19 @@ async def test_webhook_member_added(hass: HomeAssistant) -> None:
     """Test handling member.added webhook."""
     events = async_capture_events(hass, "ghost_member_added")
 
-    request = _create_mock_request({
-        "member": {
-            "current": {
-                "id": "member123",
-                "email": "test@example.com",
-                "name": "Test User",
-                "status": "free",
-            },
-            "previous": {},
+    request = _create_mock_request(
+        {
+            "member": {
+                "current": {
+                    "id": "member123",
+                    "email": "test@example.com",
+                    "name": "Test User",
+                    "status": "free",
+                },
+                "previous": {},
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -47,17 +47,19 @@ async def test_webhook_member_deleted(hass: HomeAssistant) -> None:
     """Test handling member.deleted webhook."""
     events = async_capture_events(hass, "ghost_member_deleted")
 
-    request = _create_mock_request({
-        "member": {
-            "current": {},
-            "previous": {
-                "id": "member123",
-                "email": "deleted@example.com",
-                "name": "Deleted User",
-                "status": "paid",
-            },
+    request = _create_mock_request(
+        {
+            "member": {
+                "current": {},
+                "previous": {
+                    "id": "member123",
+                    "email": "deleted@example.com",
+                    "name": "Deleted User",
+                    "status": "paid",
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -72,19 +74,21 @@ async def test_webhook_member_edited_ignored(hass: HomeAssistant) -> None:
     events_added = async_capture_events(hass, "ghost_member_added")
     events_deleted = async_capture_events(hass, "ghost_member_deleted")
 
-    request = _create_mock_request({
-        "member": {
-            "current": {
-                "id": "member123",
-                "email": "test@example.com",
-                "name": "Updated Name",
-                "status": "free",
-            },
-            "previous": {
-                "name": "Old Name",
-            },
+    request = _create_mock_request(
+        {
+            "member": {
+                "current": {
+                    "id": "member123",
+                    "email": "test@example.com",
+                    "name": "Updated Name",
+                    "status": "free",
+                },
+                "previous": {
+                    "name": "Old Name",
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -99,20 +103,22 @@ async def test_webhook_post_published(hass: HomeAssistant) -> None:
     """Test handling post.published webhook."""
     events = async_capture_events(hass, "ghost_post_published")
 
-    request = _create_mock_request({
-        "post": {
-            "current": {
-                "id": "post123",
-                "title": "New Post",
-                "slug": "new-post",
-                "status": "published",
-                "url": "https://example.com/new-post/",
-            },
-            "previous": {
-                "status": "draft",
-            },
+    request = _create_mock_request(
+        {
+            "post": {
+                "current": {
+                    "id": "post123",
+                    "title": "New Post",
+                    "slug": "new-post",
+                    "status": "published",
+                    "url": "https://example.com/new-post/",
+                },
+                "previous": {
+                    "status": "draft",
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -126,19 +132,21 @@ async def test_webhook_post_unpublished(hass: HomeAssistant) -> None:
     """Test handling post unpublished webhook."""
     events = async_capture_events(hass, "ghost_post_unpublished")
 
-    request = _create_mock_request({
-        "post": {
-            "current": {
-                "id": "post123",
-                "title": "Old Post",
-                "slug": "old-post",
-                "status": "draft",
-            },
-            "previous": {
-                "status": "published",
-            },
+    request = _create_mock_request(
+        {
+            "post": {
+                "current": {
+                    "id": "post123",
+                    "title": "Old Post",
+                    "slug": "old-post",
+                    "status": "draft",
+                },
+                "previous": {
+                    "status": "published",
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -152,20 +160,22 @@ async def test_webhook_post_updated(hass: HomeAssistant) -> None:
     events = async_capture_events(hass, "ghost_post_updated")
 
     # When status doesn't change, Ghost sends previous status in the payload
-    request = _create_mock_request({
-        "post": {
-            "current": {
-                "id": "post123",
-                "title": "Updated Post",
-                "slug": "post",
-                "status": "published",
-            },
-            "previous": {
-                "title": "Old Title",
-                "status": "published",  # Same status = update, not publish
-            },
+    request = _create_mock_request(
+        {
+            "post": {
+                "current": {
+                    "id": "post123",
+                    "title": "Updated Post",
+                    "slug": "post",
+                    "status": "published",
+                },
+                "previous": {
+                    "title": "Old Title",
+                    "status": "published",  # Same status = update, not publish
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()
@@ -178,20 +188,22 @@ async def test_webhook_page_published(hass: HomeAssistant) -> None:
     """Test handling page.published webhook."""
     events = async_capture_events(hass, "ghost_page_published")
 
-    request = _create_mock_request({
-        "page": {
-            "current": {
-                "id": "page123",
-                "title": "About Page",
-                "slug": "about",
-                "status": "published",
-                "url": "https://example.com/about/",
-            },
-            "previous": {
-                "status": "draft",
-            },
+    request = _create_mock_request(
+        {
+            "page": {
+                "current": {
+                    "id": "page123",
+                    "title": "About Page",
+                    "slug": "about",
+                    "status": "published",
+                    "url": "https://example.com/about/",
+                },
+                "previous": {
+                    "status": "draft",
+                },
+            }
         }
-    })
+    )
 
     response = await handle_webhook(hass, "ghost_test", request)
     await hass.async_block_till_done()

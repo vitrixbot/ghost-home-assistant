@@ -35,9 +35,7 @@ def _nested_get(data: dict, *keys: str, default: Any = 0) -> Any:
     return data if data != {} else default
 
 
-def _get_device_info(
-    coordinator: GhostDataUpdateCoordinator, entry: GhostConfigEntry
-) -> dict:
+def _get_device_info(coordinator: GhostDataUpdateCoordinator, entry: GhostConfigEntry) -> dict:
     """Get device info for Ghost sensors."""
     return {
         "identifiers": {(DOMAIN, entry.entry_id)},
@@ -143,9 +141,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         translation_key="latest_post",
         name="Latest Post",
         value_fn=lambda data: (
-            data.get("latest_post", {}).get("title")
-            if data.get("latest_post")
-            else None
+            data.get("latest_post", {}).get("title") if data.get("latest_post") else None
         ),
         extra_attrs_fn=lambda data: (
             {
@@ -163,9 +159,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         translation_key="latest_email",
         name="Latest Email",
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("title")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("title") if data.get("latest_email") else None
         ),
         extra_attrs_fn=lambda data: (
             {
@@ -189,9 +183,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Sent",
         state_class=SensorStateClass.TOTAL,
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("email_count")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("email_count") if data.get("latest_email") else None
         ),
     ),
     GhostSensorEntityDescription(
@@ -200,9 +192,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Opened",
         state_class=SensorStateClass.TOTAL,
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("opened_count")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("opened_count") if data.get("latest_email") else None
         ),
     ),
     GhostSensorEntityDescription(
@@ -211,9 +201,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Open Rate",
         native_unit_of_measurement="%",
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("open_rate")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("open_rate") if data.get("latest_email") else None
         ),
     ),
     GhostSensorEntityDescription(
@@ -222,9 +210,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Clicked",
         state_class=SensorStateClass.TOTAL,
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("clicked_count")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("clicked_count") if data.get("latest_email") else None
         ),
     ),
     GhostSensorEntityDescription(
@@ -233,9 +219,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Click Rate",
         native_unit_of_measurement="%",
         value_fn=lambda data: (
-            data.get("latest_email", {}).get("click_rate")
-            if data.get("latest_email")
-            else None
+            data.get("latest_email", {}).get("click_rate") if data.get("latest_email") else None
         ),
     ),
     # Social/ActivityPub metrics
@@ -283,9 +267,7 @@ async def async_setup_entry(
         newsletter_status = newsletter.get("status")
         if newsletter_id and newsletter_status == "active":
             entities.append(
-                GhostNewsletterSensorEntity(
-                    coordinator, entry, newsletter_id, newsletter_name
-                )
+                GhostNewsletterSensorEntity(coordinator, entry, newsletter_id, newsletter_name)
             )
 
     async_add_entities(entities)
@@ -322,9 +304,7 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
         return None
 
 
-class GhostNewsletterSensorEntity(
-    CoordinatorEntity[GhostDataUpdateCoordinator], SensorEntity
-):
+class GhostNewsletterSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEntity):
     """Representation of a Ghost newsletter subscriber sensor."""
 
     _attr_has_entity_name = True
@@ -349,9 +329,7 @@ class GhostNewsletterSensorEntity(
     def _get_newsletter_by_id(self) -> dict | None:
         """Get newsletter data by ID."""
         newsletters = self.coordinator.data.get("newsletters", [])
-        return next(
-            (n for n in newsletters if n.get("id") == self._newsletter_id), None
-        )
+        return next((n for n in newsletters if n.get("id") == self._newsletter_id), None)
 
     @property
     def native_value(self) -> int | None:

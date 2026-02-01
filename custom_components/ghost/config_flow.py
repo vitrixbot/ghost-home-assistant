@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import voluptuous as vol
 from aioghost import GhostAdminAPI
 from aioghost.exceptions import GhostAuthError, GhostError
-import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import AbortFlow
 
@@ -31,9 +30,7 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
 
     _reauth_entry: ConfigEntry | None = None
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
@@ -57,13 +54,9 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle reauthorization."""
-        self._reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
+        self._reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
@@ -89,9 +82,7 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
                             CONF_ADMIN_API_KEY: admin_api_key,
                         },
                     )
-                    await self.hass.config_entries.async_reload(
-                        self._reauth_entry.entry_id
-                    )
+                    await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
                 except GhostAuthError:
                     errors["base"] = "invalid_auth"
@@ -134,17 +125,13 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reconfigure",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        CONF_API_URL, default=entry.data[CONF_API_URL]
-                    ): str,
+                    vol.Required(CONF_API_URL, default=entry.data[CONF_API_URL]): str,
                 }
             ),
             errors=errors,
         )
 
-    async def _validate_credentials(
-        self, api_url: str, admin_api_key: str
-    ) -> dict[str, Any]:
+    async def _validate_credentials(self, api_url: str, admin_api_key: str) -> dict[str, Any]:
         """Validate credentials against the Ghost API.
 
         Returns site data on success. Raises GhostAuthError or GhostError on failure.

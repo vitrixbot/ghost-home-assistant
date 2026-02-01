@@ -57,7 +57,7 @@ async def async_register_webhook(
 ) -> str:
     """Register the webhook and return the webhook ID."""
     webhook_id = get_webhook_id(entry_id)
-    
+
     async_register(
         hass,
         DOMAIN,
@@ -65,7 +65,7 @@ async def async_register_webhook(
         webhook_id,
         handle_webhook,
     )
-    
+
     _LOGGER.debug("Registered webhook %s for %s", webhook_id, site_title)
     return webhook_id
 
@@ -88,20 +88,20 @@ async def handle_webhook(
     except Exception as err:
         _LOGGER.error("Failed to parse webhook payload: %s", err)
         return web.Response(status=400, text="Invalid JSON")
-    
+
     # Extract event info from Ghost webhook payload
     # Ghost sends the event type in the payload structure
     # The payload contains the resource that triggered it (e.g., member, post)
-    
+
     event_type = None
     event_data: dict[str, Any] = {"webhook_id": webhook_id}
-    
+
     # Determine event type from payload structure
     if "member" in payload:
         member = payload["member"]
         current = member.get("current", {})
         previous = member.get("previous", {})
-        
+
         # Ghost webhook logic:
         # - member.added: current has data, previous is empty {}
         # - member.deleted: current is empty {}, previous has data
@@ -111,17 +111,19 @@ async def handle_webhook(
         elif not previous:
             event_type = "ghost_member_added"
         # else: member.edited - intentionally ignored
-        
+
         # Include useful member data (only for add/delete)
         if event_type:
             member_data = current or previous
-            event_data.update({
-                "member_id": member_data.get("id"),
-                "email": member_data.get("email"),
-                "name": member_data.get("name"),
-                "status": member_data.get("status"),
-            })
-    
+            event_data.update(
+                {
+                    "member_id": member_data.get("id"),
+                    "email": member_data.get("email"),
+                    "name": member_data.get("name"),
+                    "status": member_data.get("status"),
+                }
+            )
+
     elif "post" in payload:
         event_type, extra_data = _handle_content_webhook(payload, "post")
         event_data.update(extra_data)
@@ -129,11 +131,11 @@ async def handle_webhook(
     elif "page" in payload:
         event_type, extra_data = _handle_content_webhook(payload, "page")
         event_data.update(extra_data)
-    
+
     if event_type:
         _LOGGER.info("Ghost webhook: %s", event_type)
         hass.bus.async_fire(event_type, event_data)
     else:
         _LOGGER.warning("Unknown Ghost webhook payload: %s", list(payload.keys()))
-    
+
     return web.Response(status=200, text="OK")

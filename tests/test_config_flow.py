@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -199,9 +197,7 @@ async def test_reauth_flow_invalid_auth(
     assert result["errors"] == {"base": "invalid_auth"}
 
 
-async def test_reauth_flow_invalid_api_key_format(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
+async def test_reauth_flow_invalid_api_key_format(hass: HomeAssistant, mock_config_entry) -> None:
     """Test the reauth flow with invalid API key format (no colon)."""
     mock_config_entry.add_to_hass(hass)
 
