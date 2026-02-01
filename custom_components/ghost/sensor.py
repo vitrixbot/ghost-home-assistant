@@ -26,8 +26,6 @@ class GhostSensorEntityDescription(SensorEntityDescription):
     """Describes a Ghost sensor entity."""
 
     value_fn: Callable[[dict], Any]
-    requires_stripe: bool = False  # Sensor requires Stripe to be connected
-    requires_email: bool = False   # Sensor requires emails to have been sent
 
 
 SENSORS: tuple[GhostSensorEntityDescription, ...] = (
@@ -45,7 +43,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Paid Members",
         icon="mdi:account-cash",
         state_class=SensorStateClass.TOTAL,
-        requires_stripe=True,
         value_fn=lambda data: data.get("members", {}).get("paid", 0),
     ),
     GhostSensorEntityDescription(
@@ -92,7 +89,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         translation_key="latest_email",
         name="Latest Email",
         icon="mdi:email-newsletter",
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("title") if data.get("latest_email") else None,
     ),
     GhostSensorEntityDescription(
@@ -101,7 +97,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Sent",
         icon="mdi:send",
         state_class=SensorStateClass.TOTAL,
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("email_count") if data.get("latest_email") else None,
     ),
     GhostSensorEntityDescription(
@@ -110,7 +105,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Opened",
         icon="mdi:email-open",
         state_class=SensorStateClass.TOTAL,
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("opened_count") if data.get("latest_email") else None,
     ),
     GhostSensorEntityDescription(
@@ -119,7 +113,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Open Rate",
         icon="mdi:email-open-outline",
         native_unit_of_measurement="%",
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("open_rate") if data.get("latest_email") else None,
     ),
     GhostSensorEntityDescription(
@@ -128,7 +121,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Clicked",
         icon="mdi:cursor-default-click",
         state_class=SensorStateClass.TOTAL,
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("clicked_count") if data.get("latest_email") else None,
     ),
     GhostSensorEntityDescription(
@@ -137,7 +129,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Click Rate",
         icon="mdi:cursor-default-click-outline",
         native_unit_of_measurement="%",
-        requires_email=True,
         value_fn=lambda data: data.get("latest_email", {}).get("click_rate") if data.get("latest_email") else None,
     ),
 )
@@ -180,23 +171,6 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
             "model": "Ghost",
             "configuration_url": coordinator.api.site_url,
         }
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        # Check base availability (coordinator connected)
-        if not super().available:
-            return False
-        
-        # Check if sensor requires Stripe and it's not connected
-        if self.entity_description.requires_stripe and not self.coordinator.stripe_connected:
-            return False
-        
-        # Check if sensor requires emails and none have been sent
-        if self.entity_description.requires_email and not self.coordinator.has_emails:
-            return False
-        
-        return True
 
     @property
     def native_value(self) -> Any:

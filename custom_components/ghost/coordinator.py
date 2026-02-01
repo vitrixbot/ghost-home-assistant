@@ -24,9 +24,6 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize the coordinator."""
         self.api = api
         self.site_title = site_title
-        # Feature flags - updated on each refresh
-        self.stripe_connected: bool = False
-        self.has_emails: bool = False
 
         super().__init__(
             hass,
@@ -44,10 +41,6 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
             members = await self.api.get_members_count()
             latest_post = await self.api.get_latest_post()
             latest_email = await self.api.get_latest_email()
-            
-            # Update feature flags
-            self.stripe_connected = await self.api.is_stripe_connected()
-            self.has_emails = latest_email is not None
             
             return {
                 "site": site,
