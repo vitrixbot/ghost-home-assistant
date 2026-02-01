@@ -21,6 +21,18 @@ from .const import DOMAIN
 from .coordinator import GhostDataUpdateCoordinator
 
 
+def _get_mrr_value(data: dict) -> float | None:
+    """Extract MRR value from coordinator data, converting cents to dollars."""
+    mrr_data = data.get("mrr", {})
+    if not mrr_data:
+        return None
+    # Get the first currency's value (usually USD)
+    # MRR is stored in cents, convert to dollars
+    for currency, value_cents in mrr_data.items():
+        return round(value_cents / 100, 2)
+    return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class GhostSensorEntityDescription(SensorEntityDescription):
     """Describes a Ghost sensor entity."""
@@ -146,6 +158,26 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         icon="mdi:account-multiple-outline",
         state_class=SensorStateClass.TOTAL,
         value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="mrr",
+        translation_key="mrr",
+        name="MRR",
+        icon="mdi:cash-multiple",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement="USD",
+        value_fn=lambda data: _get_mrr_value(data),
+    ),
+    GhostSensorEntityDescription(
+        key="arr",
+        translation_key="arr",
+        name="ARR",
+        icon="mdi:cash-multiple",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement="USD",
+        value_fn=lambda data: _get_mrr_value(data) * 12 if _get_mrr_value(data) else None,
     ),
 )
 

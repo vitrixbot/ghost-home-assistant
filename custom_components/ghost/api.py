@@ -187,6 +187,25 @@ class GhostAdminAPI:
         
         return None
 
+    async def get_mrr(self) -> dict:
+        """Get MRR (Monthly Recurring Revenue) data.
+        
+        Returns dict with currency keys and MRR values in cents.
+        E.g., {"usd": 12284, "eur": 5000}
+        """
+        data = await self._request("/ghost/api/admin/members/stats/mrr/")
+        
+        result = {}
+        for currency_data in data.get("data", []):
+            currency = currency_data.get("currency", "usd")
+            values = currency_data.get("data", [])
+            if values:
+                # Get the most recent MRR value
+                latest = values[-1]
+                result[currency] = latest.get("value", 0)
+        
+        return result
+
     async def get_activitypub_stats(self) -> dict:
         """Get ActivityPub follower/following counts (public endpoints)."""
         session = await self._get_session()
