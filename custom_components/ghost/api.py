@@ -148,14 +148,14 @@ class GhostAdminAPI:
     async def get_latest_email(self) -> dict | None:
         """Get the most recently sent email newsletter."""
         # Get posts that have been sent as email, ordered by most recent
-        # Include count.clicks to get click tracking data
+        # Include email object AND count.clicks to get click tracking data
         data = await self._request(
             "/ghost/api/admin/posts/",
             {
                 "limit": 10,
                 "order": "published_at desc",
                 "filter": "status:published",
-                "include": "count.clicks",
+                "include": "email,count.clicks",
             },
         )
         posts = data.get("posts", [])
