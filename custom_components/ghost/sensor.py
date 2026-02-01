@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import CURRENCY, DOMAIN, MANUFACTURER, MODEL
 from .coordinator import GhostDataUpdateCoordinator
 
 if TYPE_CHECKING:
@@ -26,6 +26,15 @@ if TYPE_CHECKING:
 PARALLEL_UPDATES = 0
 
 
+def _nested_get(data: dict, *keys: str, default: Any = 0) -> Any:
+    """Get nested dict value safely."""
+    for key in keys:
+        if not isinstance(data, dict):
+            return default
+        data = data.get(key, {})
+    return data if data != {} else default
+
+
 def _get_device_info(
     coordinator: GhostDataUpdateCoordinator, entry: GhostConfigEntry
 ) -> dict:
@@ -33,8 +42,8 @@ def _get_device_info(
     return {
         "identifiers": {(DOMAIN, entry.entry_id)},
         "name": coordinator.site_title,
-        "manufacturer": "Ghost Foundation",
-        "model": "Ghost",
+        "manufacturer": MANUFACTURER,
+        "model": MODEL,
         "configuration_url": coordinator.api.api_url,
     }
 
@@ -53,6 +62,7 @@ class GhostSensorEntityDescription(SensorEntityDescription):
     """Describes a Ghost sensor entity."""
 
     value_fn: Callable[[dict], Any]
+    extra_attrs_fn: Callable[[dict], dict[str, Any] | None] | None = None
 
 
 SENSORS: tuple[GhostSensorEntityDescription, ...] = (
@@ -63,7 +73,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Total Members",
         icon="mdi:account-group",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("members", {}).get("total", 0),
+        value_fn=lambda data: _nested_get(data, "members", "total"),
     ),
     GhostSensorEntityDescription(
         key="paid_members",
@@ -71,7 +81,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Paid Members",
         icon="mdi:account-cash",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("members", {}).get("paid", 0),
+        value_fn=lambda data: _nested_get(data, "members", "paid"),
     ),
     GhostSensorEntityDescription(
         key="free_members",
@@ -79,7 +89,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Free Members",
         icon="mdi:account-outline",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("members", {}).get("free", 0),
+        value_fn=lambda data: _nested_get(data, "members", "free"),
     ),
     GhostSensorEntityDescription(
         key="comped_members",
@@ -87,7 +97,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Comped Members",
         icon="mdi:account-star",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("members", {}).get("comped", 0),
+        value_fn=lambda data: _nested_get(data, "members", "comped"),
     ),
     # Revenue metrics
     GhostSensorEntityDescription(
@@ -97,7 +107,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         icon="mdi:cash-multiple",
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        native_unit_of_measurement=CURRENCY,
         suggested_display_precision=0,
         value_fn=lambda data: _get_mrr_value(data),
     ),
@@ -108,7 +118,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         icon="mdi:cash-multiple",
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        native_unit_of_measurement=CURRENCY,
         suggested_display_precision=0,
         value_fn=lambda data: (mrr := _get_mrr_value(data)) and mrr * 12,
     ),
@@ -119,7 +129,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Published Posts",
         icon="mdi:post",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("published", 0),
+        value_fn=lambda data: _nested_get(data, "posts", "published"),
     ),
     GhostSensorEntityDescription(
         key="draft_posts",
@@ -127,7 +137,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Draft Posts",
         icon="mdi:file-edit-outline",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("drafts", 0),
+        value_fn=lambda data: _nested_get(data, "posts", "drafts"),
     ),
     GhostSensorEntityDescription(
         key="scheduled_posts",
@@ -135,7 +145,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Scheduled Posts",
         icon="mdi:clock-outline",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("scheduled", 0),
+        value_fn=lambda data: _nested_get(data, "posts", "scheduled"),
     ),
     GhostSensorEntityDescription(
         key="latest_post",
@@ -145,6 +155,15 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         value_fn=lambda data: (
             data.get("latest_post", {}).get("title")
             if data.get("latest_post")
+            else None
+        ),
+        extra_attrs_fn=lambda data: (
+            {
+                "url": post.get("url"),
+                "published_at": post.get("published_at"),
+                "slug": post.get("slug"),
+            }
+            if (post := data.get("latest_post"))
             else None
         ),
     ),
@@ -157,6 +176,21 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         value_fn=lambda data: (
             data.get("latest_email", {}).get("title")
             if data.get("latest_email")
+            else None
+        ),
+        extra_attrs_fn=lambda data: (
+            {
+                "subject": email.get("subject"),
+                "sent_at": email.get("submitted_at"),
+                "sent_to": email.get("email_count"),
+                "delivered": email.get("delivered_count"),
+                "opened": email.get("opened_count"),
+                "clicked": email.get("clicked_count"),
+                "failed": email.get("failed_count"),
+                "open_rate": email.get("open_rate"),
+                "click_rate": email.get("click_rate"),
+            }
+            if (email := data.get("latest_email"))
             else None
         ),
     ),
@@ -227,7 +261,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="SocialWeb Followers",
         icon="mdi:account-multiple",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("activitypub", {}).get("followers", 0),
+        value_fn=lambda data: _nested_get(data, "activitypub", "followers"),
     ),
     GhostSensorEntityDescription(
         key="socialweb_following",
@@ -235,7 +269,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="SocialWeb Following",
         icon="mdi:account-multiple-outline",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
+        value_fn=lambda data: _nested_get(data, "activitypub", "following"),
     ),
     # Engagement metrics
     GhostSensorEntityDescription(
@@ -302,26 +336,8 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if self.entity_description.key == "latest_post":
-            if post := self.coordinator.data.get("latest_post"):
-                return {
-                    "url": post.get("url"),
-                    "published_at": post.get("published_at"),
-                    "slug": post.get("slug"),
-                }
-        elif self.entity_description.key == "latest_email":
-            if email := self.coordinator.data.get("latest_email"):
-                return {
-                    "subject": email.get("subject"),
-                    "sent_at": email.get("submitted_at"),
-                    "sent_to": email.get("email_count"),
-                    "delivered": email.get("delivered_count"),
-                    "opened": email.get("opened_count"),
-                    "clicked": email.get("clicked_count"),
-                    "failed": email.get("failed_count"),
-                    "open_rate": email.get("open_rate"),
-                    "click_rate": email.get("click_rate"),
-                }
+        if self.entity_description.extra_attrs_fn is not None:
+            return self.entity_description.extra_attrs_fn(self.coordinator.data)
         return None
 
 

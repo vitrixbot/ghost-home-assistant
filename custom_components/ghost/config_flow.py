@@ -12,7 +12,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
 from homeassistant.data_entry_flow import AbortFlow
 
-from .const import CONF_ADMIN_API_KEY, CONF_API_URL, DOMAIN
+from .const import CONF_ADMIN_API_KEY, CONF_API_URL, DEFAULT_TITLE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,9 +77,8 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
             if ":" not in admin_api_key:
                 errors["base"] = "invalid_api_key"
             else:
-                api = GhostAdminAPI(api_url, admin_api_key)
                 try:
-                    await api.get_site()
+                    await self._validate_credentials(api_url, admin_api_key)
                     self.hass.config_entries.async_update_entry(
                         self._reauth_entry,
                         data={
@@ -95,14 +94,25 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["base"] = "invalid_auth"
                 except GhostError:
                     errors["base"] = "cannot_connect"
-                finally:
-                    await api.close()
 
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=vol.Schema({vol.Required(CONF_ADMIN_API_KEY): str}),
             errors=errors,
         )
+
+    async def _validate_credentials(
+        self, api_url: str, admin_api_key: str
+    ) -> dict[str, Any]:
+        """Validate credentials against the Ghost API.
+
+        Returns site data on success. Raises GhostAuthError or GhostError on failure.
+        """
+        api = GhostAdminAPI(api_url, admin_api_key)
+        try:
+            return await api.get_site()
+        finally:
+            await api.close()
 
     async def _validate_and_create(
         self,
@@ -111,10 +121,9 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str],
     ) -> ConfigFlowResult | None:
         """Validate credentials and create entry."""
-        api = GhostAdminAPI(api_url, admin_api_key)
         try:
-            site = await api.get_site()
-            site_title = site.get("title", "Ghost")
+            site = await self._validate_credentials(api_url, admin_api_key)
+            site_title = site.get("title", DEFAULT_TITLE)
 
             await self.async_set_unique_id(api_url)
             self._abort_if_unique_id_configured()
@@ -135,6 +144,4 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
         except Exception:
             _LOGGER.exception("Unexpected error during Ghost setup")
             errors["base"] = "unknown"
-        finally:
-            await api.close()
         return None

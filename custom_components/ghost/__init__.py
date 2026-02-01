@@ -17,6 +17,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 from .const import (
     CONF_ADMIN_API_KEY,
     CONF_API_URL,
+    DEFAULT_TITLE,
     WEBHOOK_EVENTS,
 )
 from .coordinator import GhostDataUpdateCoordinator
@@ -59,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: GhostConfigEntry) -> boo
 
     try:
         site = await api.get_site()
-        site_title = site.get("title", "Ghost")
+        site_title = site.get("title", DEFAULT_TITLE)
     except GhostAuthError as err:
         await api.close()
         raise ConfigEntryAuthFailed("Invalid API key") from err
