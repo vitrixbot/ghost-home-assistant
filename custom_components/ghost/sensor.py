@@ -213,12 +213,13 @@ async def async_setup_entry(
         for description in SENSORS
     ]
     
-    # Add dynamic newsletter sensors
+    # Add dynamic newsletter sensors (active only)
     newsletters = coordinator.data.get("newsletters", [])
     for newsletter in newsletters:
         newsletter_id = newsletter.get("id")
         newsletter_name = newsletter.get("name", "Newsletter")
-        if newsletter_id:
+        newsletter_status = newsletter.get("status")
+        if newsletter_id and newsletter_status == "active":
             entities.append(
                 GhostNewsletterSensorEntity(
                     coordinator, entry, newsletter_id, newsletter_name
