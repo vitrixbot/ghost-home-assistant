@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Ghost",
+        "description": "[Create a custom integration in Ghost]({docs_url}) to get your Admin API key.",
+        "data": {
+          "url": "API URL",
+          "admin_api_key": "Admin API Key"
+        },
+        "data_description": {
+          "url": "The URL of your Ghost site (e.g., https://example.com)",
+          "admin_api_key": "Your Admin API key in the format id:secret"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Ghost. Please check your URL and API key.",
+      "invalid_api_key": "Invalid API key format. The key should be in the format id:secret."
+    },
+    "abort": {
+      "already_configured": "This Ghost site is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_members": {
+        "name": "Total Members"
+      },
+      "paid_members": {
+        "name": "Paid Members"
+      },
+      "free_members": {
+        "name": "Free Members"
+      },
+      "published_posts": {
+        "name": "Published Posts"
+      },
+      "draft_posts": {
+        "name": "Draft Posts"
+      },
+      "scheduled_posts": {
+        "name": "Scheduled Posts"
+      },
+      "latest_post": {
+        "name": "Latest Post"
+      },
+      "latest_email": {
+        "name": "Latest Email"
+      },
+      "latest_email_sent": {
+        "name": "Latest Email Sent"
+      },
+      "latest_email_opened": {
+        "name": "Latest Email Opened"
+      },
+      "latest_email_open_rate": {
+        "name": "Latest Email Open Rate"
+      }
+    }
+  }
+}
