@@ -32,15 +32,6 @@ The **Ghost** {% term integration %} allows you to monitor your [Ghost](https://
 
 {% include integrations/config_flow.md %}
 
-## Configuration parameters
-
-{% configuration_basic %}
-API URL:
-  description: The URL of your Ghost site (e.g., `https://yoursite.ghost.io` or `https://blog.example.com`).
-Admin API Key:
-  description: The Admin API Key from your Ghost custom integration.
-{% endconfiguration_basic %}
-
 ## Sensors
 
 The Ghost integration provides the following sensors:
