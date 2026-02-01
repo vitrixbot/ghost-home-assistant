@@ -41,6 +41,7 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
             members = await self.api.get_members_count()
             latest_post = await self.api.get_latest_post()
             latest_email = await self.api.get_latest_email()
+            activitypub = await self.api.get_activitypub_stats()
             
             return {
                 "site": site,
@@ -48,6 +49,7 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
                 "members": members,
                 "latest_post": latest_post,
                 "latest_email": latest_email,
+                "activitypub": activitypub,
             }
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Ghost API: {err}") from err

@@ -131,6 +131,22 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         value_fn=lambda data: data.get("latest_email", {}).get("click_rate") if data.get("latest_email") else None,
     ),
+    GhostSensorEntityDescription(
+        key="socialweb_followers",
+        translation_key="socialweb_followers",
+        name="SocialWeb Followers",
+        icon="mdi:account-multiple",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("activitypub", {}).get("followers", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="socialweb_following",
+        translation_key="socialweb_following",
+        name="SocialWeb Following",
+        icon="mdi:account-multiple-outline",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
+    ),
 )
 
 

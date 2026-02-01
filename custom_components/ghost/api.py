@@ -187,6 +187,35 @@ class GhostAdminAPI:
         
         return None
 
+    async def get_activitypub_stats(self) -> dict:
+        """Get ActivityPub follower/following counts (public endpoints)."""
+        session = await self._get_session()
+        headers = {"Accept": "application/activity+json"}
+        
+        stats = {"followers": 0, "following": 0}
+        
+        try:
+            # Fetch followers count
+            followers_url = f"{self.site_url}/.ghost/activitypub/followers/index"
+            async with session.get(followers_url, headers=headers) as response:
+                if response.ok:
+                    data = await response.json()
+                    stats["followers"] = data.get("totalItems", 0)
+        except Exception:
+            pass  # ActivityPub might not be enabled
+        
+        try:
+            # Fetch following count
+            following_url = f"{self.site_url}/.ghost/activitypub/following/index"
+            async with session.get(following_url, headers=headers) as response:
+                if response.ok:
+                    data = await response.json()
+                    stats["following"] = data.get("totalItems", 0)
+        except Exception:
+            pass  # ActivityPub might not be enabled
+        
+        return stats
+
     async def validate_credentials(self) -> bool:
         """Validate the API credentials."""
         try:
