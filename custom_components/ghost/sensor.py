@@ -21,6 +21,17 @@ from .const import DOMAIN
 from .coordinator import GhostDataUpdateCoordinator
 
 
+def _get_device_info(coordinator: GhostDataUpdateCoordinator, entry: ConfigEntry) -> dict:
+    """Get device info for Ghost sensors."""
+    return {
+        "identifiers": {(DOMAIN, entry.entry_id)},
+        "name": coordinator.site_title,
+        "manufacturer": "Ghost Foundation",
+        "model": "Ghost",
+        "configuration_url": coordinator.api.site_url,
+    }
+
+
 def _get_mrr_value(data: dict) -> int | None:
     """Extract MRR value from coordinator data, converting cents to whole dollars."""
     mrr_data = data.get("mrr", {})
@@ -195,7 +206,8 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement="USD",
         suggested_display_precision=0,
-        value_fn=lambda data: _get_mrr_value(data) * 12 if _get_mrr_value(data) else None,
+        # Use walrus operator to call _get_mrr_value only once per access
+        value_fn=lambda data: (mrr := _get_mrr_value(data)) and mrr * 12,
     ),
 )
 
@@ -245,13 +257,7 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": coordinator.site_title,
-            "manufacturer": "Ghost Foundation",
-            "model": "Ghost",
-            "configuration_url": coordinator.api.site_url,
-        }
+        self._attr_device_info = _get_device_info(coordinator, entry)
 
     @property
     def native_value(self) -> Any:
@@ -306,32 +312,29 @@ class GhostNewsletterSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator],
         self._newsletter_name = newsletter_name
         self._attr_unique_id = f"{entry.entry_id}_newsletter_{newsletter_id}"
         self._attr_name = f"{newsletter_name} Subscribers"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": coordinator.site_title,
-            "manufacturer": "Ghost Foundation",
-            "model": "Ghost",
-            "configuration_url": coordinator.api.site_url,
-        }
+        self._attr_device_info = _get_device_info(coordinator, entry)
+
+    def _get_newsletter_by_id(self) -> dict | None:
+        """Get newsletter data by ID."""
+        newsletters = self.coordinator.data.get("newsletters", [])
+        return next((n for n in newsletters if n.get("id") == self._newsletter_id), None)
 
     @property
     def native_value(self) -> int | None:
         """Return the subscriber count for this newsletter."""
-        newsletters = self.coordinator.data.get("newsletters", [])
-        for newsletter in newsletters:
-            if newsletter.get("id") == self._newsletter_id:
-                count = newsletter.get("count", {})
-                return count.get("members", 0)
+        newsletter = self._get_newsletter_by_id()
+        if newsletter:
+            count = newsletter.get("count", {})
+            return count.get("members", 0)
         return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        newsletters = self.coordinator.data.get("newsletters", [])
-        for newsletter in newsletters:
-            if newsletter.get("id") == self._newsletter_id:
-                return {
-                    "newsletter_id": self._newsletter_id,
-                    "status": newsletter.get("status"),
-                }
+        newsletter = self._get_newsletter_by_id()
+        if newsletter:
+            return {
+                "newsletter_id": self._newsletter_id,
+                "status": newsletter.get("status"),
+            }
         return None

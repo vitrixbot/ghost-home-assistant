@@ -13,9 +13,6 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Events we care about - imported from const
-from .const import WEBHOOK_EVENTS
-
 
 def get_webhook_id(entry_id: str) -> str:
     """Generate webhook ID for a config entry."""

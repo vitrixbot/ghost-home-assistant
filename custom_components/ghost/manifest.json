@@ -1,7 +1,7 @@
 {
   "domain": "ghost",
   "name": "Ghost",
-  "codeowners": ["@TryGhost"],
+  "codeowners": ["@vitrixbot"],
   "config_flow": true,
   "documentation": "https://ghost.org/integrations/home-assistant/",
   "integration_type": "service",

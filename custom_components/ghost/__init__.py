@@ -90,10 +90,10 @@ async def _setup_webhooks(
 ) -> None:
     """Set up webhooks for real-time events."""
     # Register HA webhook endpoint
-    webhook_id = await async_register_webhook(hass, entry.entry_id, site_title)
+    ha_webhook_id = await async_register_webhook(hass, entry.entry_id, site_title)
     
     # Build the full webhook URL that Ghost will POST to
-    ha_webhook_url = f"{webhook_url}/api/webhook/{webhook_id}"
+    ha_webhook_url = f"{webhook_url}/api/webhook/{ha_webhook_id}"
     
     _LOGGER.info("Setting up Ghost webhooks to %s", ha_webhook_url)
     
@@ -103,10 +103,10 @@ async def _setup_webhooks(
     for event in WEBHOOK_EVENTS:
         try:
             webhook = await api.create_webhook(event, ha_webhook_url)
-            webhook_id = webhook.get("id")
-            if webhook_id:
-                ghost_webhook_ids.append(webhook_id)
-                _LOGGER.debug("Created Ghost webhook for %s: %s", event, webhook_id)
+            ghost_wh_id = webhook.get("id")
+            if ghost_wh_id:
+                ghost_webhook_ids.append(ghost_wh_id)
+                _LOGGER.debug("Created Ghost webhook for %s: %s", event, ghost_wh_id)
         except Exception as err:
             _LOGGER.warning("Failed to create webhook for %s: %s", event, err)
     

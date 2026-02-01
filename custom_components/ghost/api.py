@@ -1,11 +1,12 @@
 """Ghost Admin API client."""
 
 from datetime import datetime, timedelta, timezone
-import hashlib
-import hmac
-import aiohttp
+import logging
 
+import aiohttp
 import jwt
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class GhostAdminAPI:
@@ -222,8 +223,8 @@ class GhostAdminAPI:
                 if response.ok:
                     data = await response.json()
                     stats["followers"] = data.get("totalItems", 0)
-        except Exception:
-            pass  # ActivityPub might not be enabled
+        except Exception as err:
+            _LOGGER.debug("ActivityPub followers not available: %s", err)
         
         try:
             # Fetch following count
@@ -232,8 +233,8 @@ class GhostAdminAPI:
                 if response.ok:
                     data = await response.json()
                     stats["following"] = data.get("totalItems", 0)
-        except Exception:
-            pass  # ActivityPub might not be enabled
+        except Exception as err:
+            _LOGGER.debug("ActivityPub following not available: %s", err)
         
         return stats
 
