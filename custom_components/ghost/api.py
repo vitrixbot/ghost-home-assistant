@@ -145,6 +145,21 @@ class GhostAdminAPI:
         data = await self._request("/ghost/api/admin/tiers/")
         return data.get("tiers", [])
 
+    async def get_settings(self) -> dict:
+        """Get site settings including Stripe connection status."""
+        data = await self._request("/ghost/api/admin/settings/")
+        # Settings come as an array, convert to dict for easier access
+        settings = {}
+        for setting in data.get("settings", []):
+            settings[setting.get("key")] = setting.get("value")
+        return settings
+
+    async def is_stripe_connected(self) -> bool:
+        """Check if Stripe is connected to this site."""
+        settings = await self.get_settings()
+        account_id = settings.get("stripe_connect_account_id")
+        return bool(account_id)
+
     async def get_latest_email(self) -> dict | None:
         """Get the most recently sent email newsletter."""
         # Get posts that have been sent as email, ordered by most recent
@@ -179,8 +194,8 @@ class GhostAdminAPI:
                     "opened_count": opened_count,
                     "clicked_count": clicked_count,
                     "failed_count": email.get("failed_count", 0),
-                    "open_rate": round((opened_count / email_count * 100), 1) if email_count > 0 else 0,
-                    "click_rate": round((clicked_count / email_count * 100), 1) if email_count > 0 else 0,
+                    "open_rate": round(opened_count / email_count * 100) if email_count > 0 else 0,
+                    "click_rate": round(clicked_count / email_count * 100) if email_count > 0 else 0,
                     "subject": email.get("subject"),
                     "submitted_at": email.get("submitted_at"),
                 }
