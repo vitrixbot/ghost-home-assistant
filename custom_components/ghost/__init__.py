@@ -7,20 +7,33 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_URL, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.network import get_url
 
 from .api import GhostAdminAPI
-from .const import CONF_ADMIN_API_KEY, DOMAIN
+from .const import (
+    CONF_ADMIN_API_KEY,
+    CONF_ENABLE_WEBHOOKS,
+    CONF_WEBHOOK_URL,
+    DOMAIN,
+    WEBHOOK_EVENTS,
+)
 from .coordinator import GhostDataUpdateCoordinator
+from .webhook import async_register_webhook, async_unregister_webhook, get_webhook_id
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+# Store webhook IDs created in Ghost for cleanup
+GHOST_WEBHOOK_IDS = "ghost_webhook_ids"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ghost from a config entry."""
     site_url = entry.data[CONF_URL]
     admin_api_key = entry.data[CONF_ADMIN_API_KEY]
+    enable_webhooks = entry.data.get(CONF_ENABLE_WEBHOOKS, False)
+    webhook_url = entry.data.get(CONF_WEBHOOK_URL)
 
     api = GhostAdminAPI(site_url, admin_api_key)
     
@@ -37,17 +50,82 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    hass.data[DOMAIN][entry.entry_id] = {
+        "coordinator": coordinator,
+        GHOST_WEBHOOK_IDS: [],
+    }
+
+    # Set up webhooks if enabled
+    if enable_webhooks and webhook_url:
+        await _setup_webhooks(hass, entry, api, site_title, webhook_url)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
+async def _setup_webhooks(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    api: GhostAdminAPI,
+    site_title: str,
+    webhook_url: str,
+) -> None:
+    """Set up webhooks for real-time events."""
+    # Register HA webhook endpoint
+    webhook_id = await async_register_webhook(hass, entry.entry_id, site_title)
+    
+    # Build the full webhook URL that Ghost will POST to
+    ha_webhook_url = f"{webhook_url}/api/webhook/{webhook_id}"
+    
+    _LOGGER.info("Setting up Ghost webhooks to %s", ha_webhook_url)
+    
+    # Get the integration ID for creating webhooks
+    try:
+        integration_id = await api.get_integration_id()
+        if not integration_id:
+            _LOGGER.error("Could not find integration ID for API key")
+            return
+    except Exception as err:
+        _LOGGER.error("Failed to get integration ID: %s", err)
+        return
+    
+    # Create webhooks in Ghost for each event type
+    ghost_webhook_ids = []
+    for event in WEBHOOK_EVENTS:
+        try:
+            webhook = await api.create_webhook(event, ha_webhook_url, integration_id)
+            webhook_id = webhook.get("id")
+            if webhook_id:
+                ghost_webhook_ids.append(webhook_id)
+                _LOGGER.debug("Created Ghost webhook for %s: %s", event, webhook_id)
+        except Exception as err:
+            _LOGGER.warning("Failed to create webhook for %s: %s", event, err)
+    
+    # Store webhook IDs for cleanup
+    hass.data[DOMAIN][entry.entry_id][GHOST_WEBHOOK_IDS] = ghost_webhook_ids
+    _LOGGER.info("Created %d Ghost webhooks", len(ghost_webhook_ids))
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        coordinator: GhostDataUpdateCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator = entry_data["coordinator"]
+        
+        # Clean up Ghost webhooks
+        ghost_webhook_ids = entry_data.get(GHOST_WEBHOOK_IDS, [])
+        for webhook_id in ghost_webhook_ids:
+            try:
+                await coordinator.api.delete_webhook(webhook_id)
+                _LOGGER.debug("Deleted Ghost webhook %s", webhook_id)
+            except Exception as err:
+                _LOGGER.warning("Failed to delete Ghost webhook %s: %s", webhook_id, err)
+        
+        # Unregister HA webhook
+        if entry.data.get(CONF_ENABLE_WEBHOOKS):
+            async_unregister_webhook(hass, entry.entry_id)
+        
         await coordinator.api.close()
 
     return unload_ok

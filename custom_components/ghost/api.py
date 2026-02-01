@@ -216,6 +216,60 @@ class GhostAdminAPI:
         
         return stats
 
+    async def create_webhook(self, event: str, target_url: str, integration_id: str) -> dict:
+        """Create a webhook in Ghost."""
+        session = await self._get_session()
+        token = self._generate_token()
+        
+        url = f"{self.site_url}/ghost/api/admin/webhooks/"
+        headers = {
+            "Authorization": f"Ghost {token}",
+            "Accept-Version": "v5.0",
+            "Content-Type": "application/json",
+        }
+        
+        payload = {
+            "webhooks": [{
+                "event": event,
+                "target_url": target_url,
+                "integration_id": integration_id,
+            }]
+        }
+        
+        async with session.post(url, headers=headers, json=payload) as response:
+            response.raise_for_status()
+            data = await response.json()
+            return data.get("webhooks", [{}])[0]
+
+    async def delete_webhook(self, webhook_id: str) -> None:
+        """Delete a webhook from Ghost."""
+        session = await self._get_session()
+        token = self._generate_token()
+        
+        url = f"{self.site_url}/ghost/api/admin/webhooks/{webhook_id}/"
+        headers = {
+            "Authorization": f"Ghost {token}",
+            "Accept-Version": "v5.0",
+        }
+        
+        async with session.delete(url, headers=headers) as response:
+            response.raise_for_status()
+
+    async def get_integration_id(self) -> str | None:
+        """Get the integration ID associated with the current API key."""
+        # The key ID is the first part of the admin_api_key
+        key_id = self.admin_api_key.split(":")[0]
+        
+        # Fetch integrations to find which one owns this key
+        data = await self._request("/ghost/api/admin/integrations/", {"include": "api_keys"})
+        
+        for integration in data.get("integrations", []):
+            for api_key in integration.get("api_keys", []):
+                if api_key.get("id") == key_id:
+                    return integration.get("id")
+        
+        return None
+
     async def validate_credentials(self) -> bool:
         """Validate the API credentials."""
         try:

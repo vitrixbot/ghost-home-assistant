@@ -156,7 +156,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Ghost sensors based on a config entry."""
-    coordinator: GhostDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: GhostDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     
     async_add_entities(
         GhostSensorEntity(coordinator, description, entry)
