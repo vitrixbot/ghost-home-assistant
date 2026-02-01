@@ -3,7 +3,7 @@
 DOMAIN = "ghost"
 
 CONF_ADMIN_API_KEY = "admin_api_key"
-CONF_SITE_URL = "site_url"
+CONF_SITE_URL = "url"  # Keep as "url" for backward compatibility with existing entries
 
 DEFAULT_SCAN_INTERVAL = 300  # 5 minutes
 
