@@ -12,7 +12,6 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -88,7 +87,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Comped Members",
         icon="mdi:account-star",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("members", {}).get("comped", 0),
     ),
     # Revenue metrics
@@ -129,7 +127,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Draft Posts",
         icon="mdi:file-edit-outline",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("posts", {}).get("drafts", 0),
     ),
     GhostSensorEntityDescription(
@@ -138,7 +135,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Scheduled Posts",
         icon="mdi:clock-outline",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("posts", {}).get("scheduled", 0),
     ),
     GhostSensorEntityDescription(
@@ -170,7 +166,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Sent",
         icon="mdi:send",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             data.get("latest_email", {}).get("email_count")
             if data.get("latest_email")
@@ -183,7 +178,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Opened",
         icon="mdi:email-open",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             data.get("latest_email", {}).get("opened_count")
             if data.get("latest_email")
@@ -208,7 +202,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Latest Email Clicked",
         icon="mdi:cursor-default-click",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             data.get("latest_email", {}).get("clicked_count")
             if data.get("latest_email")
@@ -234,7 +227,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="SocialWeb Followers",
         icon="mdi:account-multiple",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("activitypub", {}).get("followers", 0),
     ),
     GhostSensorEntityDescription(
@@ -243,7 +235,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="SocialWeb Following",
         icon="mdi:account-multiple-outline",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
     ),
     # Engagement metrics
@@ -253,7 +244,6 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Total Comments",
         icon="mdi:comment-multiple",
         state_class=SensorStateClass.TOTAL,
-        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("comments", 0),
     ),
 )
