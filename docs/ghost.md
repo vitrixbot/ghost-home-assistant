@@ -138,7 +138,47 @@ automation:
 
 - Webhook events require your Home Assistant instance to be accessible via HTTPS (e.g., via Nabu Casa). Without HTTPS, only polling updates are available.
 - Revenue metrics (MRR/ARR) are only available for sites with Stripe connected.
-- ActivityPub/SocialWeb metrics require Ghost 5.x or later with ActivityPub enabled.
+- ActivityPub/SocialWeb metrics require Ghost 6 or later with ActivityPub enabled.
+
+## Troubleshooting
+
+### Invalid API key
+
+If you receive an "Invalid API key" error during setup:
+
+- Ensure the API key contains a colon (`:`) separating the key ID from the secret (format: `id:secret`)
+- Verify you copied the Admin API Key, not the Content API Key
+- Check that the custom integration in Ghost has not been deleted or regenerated
+
+### Cannot connect to Ghost
+
+If the integration cannot connect to your Ghost site:
+
+- Verify the API URL is correct and includes the protocol (e.g., `https://example.com`)
+- Ensure your Ghost site is accessible from your Home Assistant instance
+- Check that no firewall or proxy is blocking the connection
+
+### Missing revenue data
+
+MRR (Monthly Recurring Revenue) and ARR (Annual Recurring Revenue) sensors will show as unavailable if:
+
+- Your Ghost site does not have Stripe connected
+- You have no paid members
+
+### Missing SocialWeb/ActivityPub data
+
+The SocialWeb followers and following sensors require:
+
+- Ghost 6 or later
+- ActivityPub to be enabled in Ghost settings
+
+### Webhooks not working
+
+If webhook events (like `ghost_member_added`) are not firing:
+
+- Your Home Assistant instance must be accessible via HTTPS (e.g., via Nabu Casa)
+- Check that your reverse proxy or firewall allows incoming connections from your Ghost site
+- Verify the webhooks were created in Ghost under Settings → Integrations → Your Integration
 
 ## Removing the integration
 
