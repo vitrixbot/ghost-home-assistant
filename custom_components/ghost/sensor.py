@@ -95,7 +95,7 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         key="latest_email_sent",
         translation_key="latest_email_sent",
         name="Latest Email Sent",
-        icon="mdi:email-send",
+        icon="mdi:send",
         state_class=SensorStateClass.TOTAL,
         value_fn=lambda data: data.get("latest_email", {}).get("email_count") if data.get("latest_email") else None,
     ),
@@ -111,9 +111,25 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         key="latest_email_open_rate",
         translation_key="latest_email_open_rate",
         name="Latest Email Open Rate",
-        icon="mdi:percent",
+        icon="mdi:email-open-outline",
         native_unit_of_measurement="%",
         value_fn=lambda data: data.get("latest_email", {}).get("open_rate") if data.get("latest_email") else None,
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_clicked",
+        translation_key="latest_email_clicked",
+        name="Latest Email Clicked",
+        icon="mdi:cursor-default-click",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("latest_email", {}).get("clicked_count") if data.get("latest_email") else None,
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_click_rate",
+        translation_key="latest_email_click_rate",
+        name="Latest Email Click Rate",
+        icon="mdi:cursor-default-click-outline",
+        native_unit_of_measurement="%",
+        value_fn=lambda data: data.get("latest_email", {}).get("click_rate") if data.get("latest_email") else None,
     ),
 )
 
@@ -181,7 +197,9 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
                     "sent_to": email.get("email_count"),
                     "delivered": email.get("delivered_count"),
                     "opened": email.get("opened_count"),
+                    "clicked": email.get("clicked_count"),
                     "failed": email.get("failed_count"),
                     "open_rate": email.get("open_rate"),
+                    "click_rate": email.get("click_rate"),
                 }
         return None

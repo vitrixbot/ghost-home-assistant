@@ -164,6 +164,7 @@ class GhostAdminAPI:
                 email = post["email"]
                 email_count = email.get("email_count", 0)
                 opened_count = email.get("opened_count", 0)
+                clicked_count = email.get("clicked_count", 0)
                 
                 return {
                     "title": post.get("title"),
@@ -172,8 +173,10 @@ class GhostAdminAPI:
                     "email_count": email_count,
                     "delivered_count": email.get("delivered_count", 0),
                     "opened_count": opened_count,
+                    "clicked_count": clicked_count,
                     "failed_count": email.get("failed_count", 0),
                     "open_rate": round((opened_count / email_count * 100), 1) if email_count > 0 else 0,
+                    "click_rate": round((clicked_count / email_count * 100), 1) if email_count > 0 else 0,
                     "subject": email.get("subject"),
                     "submitted_at": email.get("submitted_at"),
                 }
