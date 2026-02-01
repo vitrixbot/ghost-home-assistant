@@ -52,12 +52,21 @@ async def test_coordinator_auth_error(hass: HomeAssistant) -> None:
     from aioghost.exceptions import GhostAuthError
 
     mock_api = AsyncMock()
+    # Set all methods to raise auth error since gather calls them all
     mock_api.get_site.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_posts_count.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_members_count.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_latest_post.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_latest_email.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_activitypub_stats.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_mrr.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_comments_count.side_effect = GhostAuthError("Invalid API key")
+    mock_api.get_newsletters.side_effect = GhostAuthError("Invalid API key")
 
     coordinator = GhostDataUpdateCoordinator(hass, mock_api, "Test Ghost")
 
     with pytest.raises(ConfigEntryAuthFailed):
-        await coordinator.async_refresh()
+        await coordinator._async_update_data()
 
 
 async def test_coordinator_connection_error(hass: HomeAssistant) -> None:
@@ -66,11 +75,19 @@ async def test_coordinator_connection_error(hass: HomeAssistant) -> None:
 
     mock_api = AsyncMock()
     mock_api.get_site.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_posts_count.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_members_count.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_latest_post.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_latest_email.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_activitypub_stats.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_mrr.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_comments_count.side_effect = GhostConnectionError("Connection failed")
+    mock_api.get_newsletters.side_effect = GhostConnectionError("Connection failed")
 
     coordinator = GhostDataUpdateCoordinator(hass, mock_api, "Test Ghost")
 
     with pytest.raises(UpdateFailed, match="Error communicating with Ghost API"):
-        await coordinator.async_refresh()
+        await coordinator._async_update_data()
 
 
 async def test_coordinator_generic_error(hass: HomeAssistant) -> None:
@@ -79,11 +96,19 @@ async def test_coordinator_generic_error(hass: HomeAssistant) -> None:
 
     mock_api = AsyncMock()
     mock_api.get_site.side_effect = GhostError("Something went wrong")
+    mock_api.get_posts_count.side_effect = GhostError("Something went wrong")
+    mock_api.get_members_count.side_effect = GhostError("Something went wrong")
+    mock_api.get_latest_post.side_effect = GhostError("Something went wrong")
+    mock_api.get_latest_email.side_effect = GhostError("Something went wrong")
+    mock_api.get_activitypub_stats.side_effect = GhostError("Something went wrong")
+    mock_api.get_mrr.side_effect = GhostError("Something went wrong")
+    mock_api.get_comments_count.side_effect = GhostError("Something went wrong")
+    mock_api.get_newsletters.side_effect = GhostError("Something went wrong")
 
     coordinator = GhostDataUpdateCoordinator(hass, mock_api, "Test Ghost")
 
     with pytest.raises(UpdateFailed):
-        await coordinator.async_refresh()
+        await coordinator._async_update_data()
 
 
 async def test_coordinator_name(hass: HomeAssistant, mock_ghost_api: AsyncMock) -> None:

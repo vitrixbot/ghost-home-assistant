@@ -112,6 +112,9 @@ async def test_form_already_configured(
 ) -> None:
     """Test error when already configured."""
     mock_config_entry.add_to_hass(hass)
+    # Ensure entry is loaded so unique_id is registered
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}

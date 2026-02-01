@@ -194,6 +194,8 @@ async def test_device_info(
     hass: HomeAssistant, mock_ghost_api: AsyncMock, mock_config_entry, mock_ghost_data
 ) -> None:
     """Test device info is set correctly."""
+    from homeassistant.helpers import device_registry as dr, entity_registry as er
+
     mock_config_entry.add_to_hass(hass)
 
     with (
@@ -203,11 +205,11 @@ async def test_device_info(
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-    entity_registry = hass.helpers.entity_registry.async_get(hass)
+    entity_registry = er.async_get(hass)
     entry = entity_registry.async_get("sensor.test_ghost_total_members")
     assert entry is not None
 
-    device_registry = hass.helpers.device_registry.async_get(hass)
+    device_registry = dr.async_get(hass)
     device = device_registry.async_get(entry.device_id)
     assert device is not None
     assert device.manufacturer == "Ghost Foundation"
