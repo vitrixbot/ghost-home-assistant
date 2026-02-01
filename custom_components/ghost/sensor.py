@@ -21,15 +21,15 @@ from .const import DOMAIN
 from .coordinator import GhostDataUpdateCoordinator
 
 
-def _get_mrr_value(data: dict) -> float | None:
-    """Extract MRR value from coordinator data, converting cents to dollars."""
+def _get_mrr_value(data: dict) -> int | None:
+    """Extract MRR value from coordinator data, converting cents to whole dollars."""
     mrr_data = data.get("mrr", {})
     if not mrr_data:
         return None
     # Get the first currency's value (usually USD)
-    # MRR is stored in cents, convert to dollars
+    # MRR is stored in cents, convert to whole dollars
     for currency, value_cents in mrr_data.items():
-        return round(value_cents / 100, 2)
+        return round(value_cents / 100)
     return None
 
 
