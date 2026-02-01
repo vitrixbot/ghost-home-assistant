@@ -87,6 +87,9 @@ automation:
 
 This integration is designed to eventually be submitted to the Home Assistant core integrations. It follows Home Assistant's development guidelines and best practices.
 
-## License
+&nbsp;
 
-MIT License - see [LICENSE](LICENSE) for details.
+# Copyright & license
+
+Copyright (c) 2013-2026 Ghost Foundation - Released under the [MIT license](LICENSE).
+Ghost and the Ghost Logo are trademarks of Ghost Foundation Ltd. Please see our [trademark policy](https://ghost.org/trademark/) for info on acceptable usage.
