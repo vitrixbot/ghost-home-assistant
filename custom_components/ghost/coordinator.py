@@ -1,5 +1,6 @@
 """DataUpdateCoordinator for Ghost."""
 
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -35,17 +36,29 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         """Fetch data from Ghost API."""
         try:
-            # Fetch all data sequentially (Ghost API doesn't love being hammered)
-            site = await self.api.get_site()
-            posts = await self.api.get_posts_count()
-            members = await self.api.get_members_count()
-            latest_post = await self.api.get_latest_post()
-            latest_email = await self.api.get_latest_email()
-            activitypub = await self.api.get_activitypub_stats()
-            mrr = await self.api.get_mrr()
-            comments = await self.api.get_comments_count()
-            newsletters = await self.api.get_newsletters()
-            
+            # Parallelize all API calls for faster updates
+            (
+                site,
+                posts,
+                members,
+                latest_post,
+                latest_email,
+                activitypub,
+                mrr,
+                comments,
+                newsletters,
+            ) = await asyncio.gather(
+                self.api.get_site(),
+                self.api.get_posts_count(),
+                self.api.get_members_count(),
+                self.api.get_latest_post(),
+                self.api.get_latest_email(),
+                self.api.get_activitypub_stats(),
+                self.api.get_mrr(),
+                self.api.get_comments_count(),
+                self.api.get_newsletters(),
+            )
+
             return {
                 "site": site,
                 "posts": posts,

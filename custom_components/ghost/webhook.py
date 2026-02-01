@@ -14,6 +14,37 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
+def _handle_content_webhook(
+    payload: dict,
+    content_type: str,  # "post" or "page"
+) -> tuple[str, dict[str, Any]]:
+    """Handle post or page webhook payload. Returns (event_type, event_data)."""
+    content = payload[content_type]
+    current = content.get("current", {})
+    previous = content.get("previous", {})
+
+    prev_status = previous.get("status")
+    curr_status = current.get("status")
+
+    if curr_status == "published" and prev_status != "published":
+        event_type = f"ghost_{content_type}_published"
+    elif prev_status == "published" and curr_status != "published":
+        event_type = f"ghost_{content_type}_unpublished"
+    else:
+        event_type = f"ghost_{content_type}_updated"
+
+    content_data = current or previous
+    event_data = {
+        f"{content_type}_id": content_data.get("id"),
+        "title": content_data.get("title"),
+        "slug": content_data.get("slug"),
+        "status": content_data.get("status"),
+        "url": content_data.get("url"),
+    }
+
+    return event_type, event_data
+
+
 def get_webhook_id(entry_id: str) -> str:
     """Generate webhook ID for a config entry."""
     return f"{DOMAIN}_{entry_id}"
@@ -92,53 +123,12 @@ async def handle_webhook(
         })
     
     elif "post" in payload:
-        post = payload["post"]
-        current = post.get("current", {})
-        previous = post.get("previous", {})
-        
-        # Detect publish/unpublish based on status change
-        prev_status = previous.get("status")
-        curr_status = current.get("status")
-        
-        if curr_status == "published" and prev_status != "published":
-            event_type = "ghost_post_published"
-        elif prev_status == "published" and curr_status != "published":
-            event_type = "ghost_post_unpublished"
-        else:
-            event_type = "ghost_post_updated"
-        
-        post_data = current or previous
-        event_data.update({
-            "post_id": post_data.get("id"),
-            "title": post_data.get("title"),
-            "slug": post_data.get("slug"),
-            "status": post_data.get("status"),
-            "url": post_data.get("url"),
-        })
-    
+        event_type, extra_data = _handle_content_webhook(payload, "post")
+        event_data.update(extra_data)
+
     elif "page" in payload:
-        page = payload["page"]
-        current = page.get("current", {})
-        previous = page.get("previous", {})
-        
-        prev_status = previous.get("status")
-        curr_status = current.get("status")
-        
-        if curr_status == "published" and prev_status != "published":
-            event_type = "ghost_page_published"
-        elif prev_status == "published" and curr_status != "published":
-            event_type = "ghost_page_unpublished"
-        else:
-            event_type = "ghost_page_updated"
-        
-        page_data = current or previous
-        event_data.update({
-            "page_id": page_data.get("id"),
-            "title": page_data.get("title"),
-            "slug": page_data.get("slug"),
-            "status": page_data.get("status"),
-            "url": page_data.get("url"),
-        })
+        event_type, extra_data = _handle_content_webhook(payload, "page")
+        event_data.update(extra_data)
     
     if event_type:
         _LOGGER.info("Ghost webhook: %s", event_type)

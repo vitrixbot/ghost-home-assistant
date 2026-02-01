@@ -37,11 +37,9 @@ def _get_mrr_value(data: dict) -> int | None:
     mrr_data = data.get("mrr", {})
     if not mrr_data:
         return None
-    # Get the first currency's value (usually USD)
-    # MRR is stored in cents, convert to whole dollars
-    for currency, value_cents in mrr_data.items():
-        return round(value_cents / 100)
-    return None
+    # Get first currency's value (usually USD), convert cents to dollars
+    first_value = next(iter(mrr_data.values()), None)
+    return round(first_value / 100) if first_value else None
 
 
 @dataclass(frozen=True, kw_only=True)

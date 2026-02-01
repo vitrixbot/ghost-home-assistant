@@ -1,5 +1,6 @@
 """Ghost Admin API client."""
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 
@@ -7,6 +8,8 @@ import aiohttp
 import jwt
 
 _LOGGER = logging.getLogger(__name__)
+
+JWT_EXPIRY_MINUTES = 5
 
 
 class GhostAdminAPI:
@@ -30,7 +33,7 @@ class GhostAdminAPI:
         now = datetime.now(timezone.utc)
         payload = {
             "iat": int(now.timestamp()),
-            "exp": int((now + timedelta(minutes=5)).timestamp()),
+            "exp": int((now + timedelta(minutes=JWT_EXPIRY_MINUTES)).timestamp()),
             "aud": "/admin/",
         }
         
@@ -53,16 +56,18 @@ class GhostAdminAPI:
         if self._session and not self._session.closed:
             await self._session.close()
 
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Get authorization headers for Ghost Admin API."""
+        return {
+            "Authorization": f"Ghost {self._generate_token()}",
+            "Accept-Version": "v5.0",
+        }
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict:
         """Make an authenticated request to the Ghost Admin API."""
         session = await self._get_session()
-        token = self._generate_token()
-        
         url = f"{self.site_url}{endpoint}"
-        headers = {
-            "Authorization": f"Ghost {token}",
-            "Accept-Version": "v5.0",
-        }
+        headers = self._get_auth_headers()
         
         async with session.get(url, headers=headers, params=params) as response:
             response.raise_for_status()
@@ -75,24 +80,12 @@ class GhostAdminAPI:
 
     async def get_posts_count(self) -> dict:
         """Get post counts by status."""
-        # Get published posts count
-        published = await self._request(
-            "/ghost/api/admin/posts/",
-            {"limit": 1, "filter": "status:published"},
+        published, drafts, scheduled = await asyncio.gather(
+            self._request("/ghost/api/admin/posts/", {"limit": 1, "filter": "status:published"}),
+            self._request("/ghost/api/admin/posts/", {"limit": 1, "filter": "status:draft"}),
+            self._request("/ghost/api/admin/posts/", {"limit": 1, "filter": "status:scheduled"}),
         )
-        
-        # Get draft posts count
-        drafts = await self._request(
-            "/ghost/api/admin/posts/",
-            {"limit": 1, "filter": "status:draft"},
-        )
-        
-        # Get scheduled posts count
-        scheduled = await self._request(
-            "/ghost/api/admin/posts/",
-            {"limit": 1, "filter": "status:scheduled"},
-        )
-        
+
         return {
             "published": published.get("meta", {}).get("pagination", {}).get("total", 0),
             "drafts": drafts.get("meta", {}).get("pagination", {}).get("total", 0),
@@ -132,10 +125,31 @@ class GhostAdminAPI:
         data = await self._request("/ghost/api/admin/tiers/")
         return data.get("tiers", [])
 
+    def _build_email_stats(self, post: dict) -> dict:
+        """Build email stats dict from post with email data."""
+        email = post["email"]
+        email_count = email.get("email_count", 0)
+        opened_count = email.get("opened_count", 0)
+        count_data = post.get("count", {})
+        clicked_count = count_data.get("clicks", 0) or 0
+
+        return {
+            "title": post.get("title"),
+            "slug": post.get("slug"),
+            "published_at": post.get("published_at"),
+            "email_count": email_count,
+            "delivered_count": email.get("delivered_count", 0),
+            "opened_count": opened_count,
+            "clicked_count": clicked_count,
+            "failed_count": email.get("failed_count", 0),
+            "open_rate": round(opened_count / email_count * 100) if email_count > 0 else 0,
+            "click_rate": round(clicked_count / email_count * 100) if email_count > 0 else 0,
+            "subject": email.get("subject"),
+            "submitted_at": email.get("submitted_at"),
+        }
+
     async def get_latest_email(self) -> dict | None:
         """Get the most recently sent email newsletter."""
-        # Get posts that have been sent as email, ordered by most recent
-        # Include email object AND count.clicks to get click tracking data
         data = await self._request(
             "/ghost/api/admin/posts/",
             {
@@ -145,33 +159,11 @@ class GhostAdminAPI:
                 "include": "email,count.clicks",
             },
         )
-        posts = data.get("posts", [])
-        
-        # Find the first post that has email data
-        for post in posts:
+
+        for post in data.get("posts", []):
             if post.get("email"):
-                email = post["email"]
-                email_count = email.get("email_count", 0)
-                opened_count = email.get("opened_count", 0)
-                # Click count comes from post.count.clicks, not email object
-                count_data = post.get("count", {})
-                clicked_count = count_data.get("clicks", 0) or 0
-                
-                return {
-                    "title": post.get("title"),
-                    "slug": post.get("slug"),
-                    "published_at": post.get("published_at"),
-                    "email_count": email_count,
-                    "delivered_count": email.get("delivered_count", 0),
-                    "opened_count": opened_count,
-                    "clicked_count": clicked_count,
-                    "failed_count": email.get("failed_count", 0),
-                    "open_rate": round(opened_count / email_count * 100) if email_count > 0 else 0,
-                    "click_rate": round(clicked_count / email_count * 100) if email_count > 0 else 0,
-                    "subject": email.get("subject"),
-                    "submitted_at": email.get("submitted_at"),
-                }
-        
+                return self._build_email_stats(post)
+
         return None
 
     async def get_comments_count(self) -> int:
@@ -245,14 +237,8 @@ class GhostAdminAPI:
         that owns the API key being used.
         """
         session = await self._get_session()
-        token = self._generate_token()
-        
         url = f"{self.site_url}/ghost/api/admin/webhooks/"
-        headers = {
-            "Authorization": f"Ghost {token}",
-            "Accept-Version": "v5.0",
-            "Content-Type": "application/json",
-        }
+        headers = {**self._get_auth_headers(), "Content-Type": "application/json"}
         
         payload = {
             "webhooks": [{
@@ -269,13 +255,8 @@ class GhostAdminAPI:
     async def delete_webhook(self, webhook_id: str) -> None:
         """Delete a webhook from Ghost."""
         session = await self._get_session()
-        token = self._generate_token()
-        
         url = f"{self.site_url}/ghost/api/admin/webhooks/{webhook_id}/"
-        headers = {
-            "Authorization": f"Ghost {token}",
-            "Accept-Version": "v5.0",
-        }
+        headers = self._get_auth_headers()
         
         async with session.delete(url, headers=headers) as response:
             response.raise_for_status()
