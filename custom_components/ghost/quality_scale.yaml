@@ -79,3 +79,8 @@ rules:
   stale-devices:
     status: exempt
     comment: Single device per config entry, removal handled by unload.
+
+  # Platinum
+  async-dependency: done
+  inject-websession: done
+  strict-typing: done
