@@ -84,6 +84,37 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         icon="mdi:newspaper",
         value_fn=lambda data: data.get("latest_post", {}).get("title") if data.get("latest_post") else None,
     ),
+    GhostSensorEntityDescription(
+        key="latest_email",
+        translation_key="latest_email",
+        name="Latest Email",
+        icon="mdi:email-newsletter",
+        value_fn=lambda data: data.get("latest_email", {}).get("title") if data.get("latest_email") else None,
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_sent",
+        translation_key="latest_email_sent",
+        name="Latest Email Sent",
+        icon="mdi:email-send",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("latest_email", {}).get("email_count") if data.get("latest_email") else None,
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_opened",
+        translation_key="latest_email_opened",
+        name="Latest Email Opened",
+        icon="mdi:email-open",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("latest_email", {}).get("opened_count") if data.get("latest_email") else None,
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_open_rate",
+        translation_key="latest_email_open_rate",
+        name="Latest Email Open Rate",
+        icon="mdi:percent",
+        native_unit_of_measurement="%",
+        value_fn=lambda data: data.get("latest_email", {}).get("open_rate") if data.get("latest_email") else None,
+    ),
 )
 
 
@@ -140,5 +171,17 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
                     "url": post.get("url"),
                     "published_at": post.get("published_at"),
                     "slug": post.get("slug"),
+                }
+        elif self.entity_description.key == "latest_email":
+            email = self.coordinator.data.get("latest_email")
+            if email:
+                return {
+                    "subject": email.get("subject"),
+                    "sent_at": email.get("submitted_at"),
+                    "sent_to": email.get("email_count"),
+                    "delivered": email.get("delivered_count"),
+                    "opened": email.get("opened_count"),
+                    "failed": email.get("failed_count"),
+                    "open_rate": email.get("open_rate"),
                 }
         return None

@@ -44,6 +44,18 @@
       },
       "latest_post": {
         "name": "Latest Post"
+      },
+      "latest_email": {
+        "name": "Latest Email"
+      },
+      "latest_email_sent": {
+        "name": "Latest Email Sent"
+      },
+      "latest_email_opened": {
+        "name": "Latest Email Opened"
+      },
+      "latest_email_open_rate": {
+        "name": "Latest Email Open Rate"
       }
     }
   }

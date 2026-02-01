@@ -145,6 +145,41 @@ class GhostAdminAPI:
         data = await self._request("/ghost/api/admin/tiers/")
         return data.get("tiers", [])
 
+    async def get_latest_email(self) -> dict | None:
+        """Get the most recently sent email newsletter."""
+        # Get posts that have been sent as email, ordered by most recent
+        data = await self._request(
+            "/ghost/api/admin/posts/",
+            {
+                "limit": 10,
+                "order": "published_at desc",
+                "filter": "status:published",
+            },
+        )
+        posts = data.get("posts", [])
+        
+        # Find the first post that has email data
+        for post in posts:
+            if post.get("email"):
+                email = post["email"]
+                email_count = email.get("email_count", 0)
+                opened_count = email.get("opened_count", 0)
+                
+                return {
+                    "title": post.get("title"),
+                    "slug": post.get("slug"),
+                    "published_at": post.get("published_at"),
+                    "email_count": email_count,
+                    "delivered_count": email.get("delivered_count", 0),
+                    "opened_count": opened_count,
+                    "failed_count": email.get("failed_count", 0),
+                    "open_rate": round((opened_count / email_count * 100), 1) if email_count > 0 else 0,
+                    "subject": email.get("subject"),
+                    "submitted_at": email.get("submitted_at"),
+                }
+        
+        return None
+
     async def validate_credentials(self) -> bool:
         """Validate the API credentials."""
         try:
