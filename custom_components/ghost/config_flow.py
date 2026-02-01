@@ -70,6 +70,6 @@ class GhostConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
             description_placeholders={
-                "docs_url": "https://ghost.org/docs/admin-api/",
+                "docs_url": "https://account.ghost.org/?r=settings/integrations",
             },
         )
