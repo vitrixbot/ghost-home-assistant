@@ -1,11 +1,11 @@
 {
   "domain": "ghost",
   "name": "Ghost",
-  "codeowners": ["@vitrixbot"],
+  "codeowners": ["@TryGhost"],
   "config_flow": true,
   "documentation": "https://ghost.org/integrations/home-assistant/",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "requirements": ["pyjwt>=2.0.0"],
-  "version": "0.1.0"
+  "requirements": ["aioghost==0.2.0"],
+  "version": "0.2.0"
 }

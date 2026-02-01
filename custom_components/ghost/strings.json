@@ -3,19 +3,29 @@
     "step": {
       "user": {
         "title": "Connect to Ghost",
-        "description": "[Create a custom integration in Ghost]({docs_url}) to get your Admin API key.",
+        "description": "Create a custom integration in Ghost Settings → Integrations to get your Admin API key.",
         "data": {
           "api_url": "API URL",
+          "admin_api_key": "Admin API Key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Ghost",
+        "description": "Your Ghost API key is invalid or expired. Please enter a new Admin API key.",
+        "data": {
           "admin_api_key": "Admin API Key"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to Ghost. Please check your URL and API key.",
-      "invalid_api_key": "Invalid API key format. The key should be in the format id:secret."
+      "cannot_connect": "Failed to connect to Ghost. Please check your URL.",
+      "invalid_api_key": "Invalid API key format. The key should be in the format id:secret.",
+      "invalid_auth": "Invalid API key. Please check your credentials.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This Ghost site is already configured."
+      "already_configured": "This Ghost site is already configured.",
+      "reauth_successful": "Reauthentication successful."
     }
   },
   "entity": {

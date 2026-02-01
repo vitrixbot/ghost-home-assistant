@@ -2,38 +2,47 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import logging
+
+from aioghost import GhostAdminAPI
+from aioghost.exceptions import GhostAuthError, GhostError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.network import get_url, NoURLAvailableError
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.network import NoURLAvailableError, get_url
 
-from .api import GhostAdminAPI
 from .const import (
     CONF_ADMIN_API_KEY,
     CONF_API_URL,
-    DOMAIN,
     WEBHOOK_EVENTS,
 )
 from .coordinator import GhostDataUpdateCoordinator
-from .webhook import async_register_webhook, async_unregister_webhook, get_webhook_id
+from .webhook import async_register_webhook, async_unregister_webhook
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-# Store webhook IDs created in Ghost for cleanup
-GHOST_WEBHOOK_IDS = "ghost_webhook_ids"
-WEBHOOKS_ENABLED = "webhooks_enabled"
+type GhostConfigEntry = ConfigEntry[GhostRuntimeData]
+
+
+@dataclass
+class GhostRuntimeData:
+    """Runtime data for Ghost integration."""
+
+    coordinator: GhostDataUpdateCoordinator
+    api: GhostAdminAPI
+    ghost_webhook_ids: list[str] = field(default_factory=list)
+    webhooks_enabled: bool = False
 
 
 def _get_external_url(hass: HomeAssistant) -> str | None:
     """Try to get an external URL for webhooks."""
     try:
-        # This will return Nabu Casa URL if available, or configured external URL
         url = get_url(hass, allow_internal=False, prefer_cloud=True)
-        # Only use HTTPS URLs for webhooks
         if url and url.startswith("https://"):
             return url
     except NoURLAvailableError:
@@ -41,40 +50,38 @@ def _get_external_url(hass: HomeAssistant) -> str | None:
     return None
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: GhostConfigEntry) -> bool:
     """Set up Ghost from a config entry."""
-    site_url = entry.data[CONF_API_URL]
+    api_url = entry.data[CONF_API_URL]
     admin_api_key = entry.data[CONF_ADMIN_API_KEY]
 
-    api = GhostAdminAPI(site_url, admin_api_key)
-    
-    # Get site info for the coordinator name
+    api = GhostAdminAPI(api_url, admin_api_key)
+
     try:
         site = await api.get_site()
         site_title = site.get("title", "Ghost")
-    except Exception as err:
-        _LOGGER.error("Failed to connect to Ghost: %s", err)
+    except GhostAuthError as err:
         await api.close()
-        return False
+        raise ConfigEntryAuthFailed("Invalid API key") from err
+    except GhostError as err:
+        await api.close()
+        raise ConfigEntryNotReady(f"Failed to connect to Ghost: {err}") from err
 
     coordinator = GhostDataUpdateCoordinator(hass, api, site_title)
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
-        "coordinator": coordinator,
-        GHOST_WEBHOOK_IDS: [],
-        WEBHOOKS_ENABLED: False,
-    }
+    runtime_data = GhostRuntimeData(coordinator=coordinator, api=api)
 
-    # Auto-detect external URL and silently enable webhooks if available
     external_url = _get_external_url(hass)
     if external_url:
-        await _setup_webhooks(hass, entry, api, site_title, external_url)
-        hass.data[DOMAIN][entry.entry_id][WEBHOOKS_ENABLED] = True
+        webhook_ids = await _setup_webhooks(hass, entry, api, site_title, external_url)
+        runtime_data.ghost_webhook_ids = webhook_ids
+        runtime_data.webhooks_enabled = True
         _LOGGER.info("Ghost webhooks enabled for %s", site_title)
     else:
         _LOGGER.debug("No external URL available, webhooks disabled for %s", site_title)
+
+    entry.runtime_data = runtime_data
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -87,53 +94,42 @@ async def _setup_webhooks(
     api: GhostAdminAPI,
     site_title: str,
     webhook_url: str,
-) -> None:
-    """Set up webhooks for real-time events."""
-    # Register HA webhook endpoint
+) -> list[str]:
+    """Set up webhooks for real-time events. Returns list of Ghost webhook IDs."""
     ha_webhook_id = await async_register_webhook(hass, entry.entry_id, site_title)
-    
-    # Build the full webhook URL that Ghost will POST to
     ha_webhook_url = f"{webhook_url}/api/webhook/{ha_webhook_id}"
-    
+
     _LOGGER.info("Setting up Ghost webhooks to %s", ha_webhook_url)
-    
-    # Create webhooks in Ghost for each event type
-    # Ghost auto-associates webhooks with the integration owning the API key
+
     ghost_webhook_ids = []
     for event in WEBHOOK_EVENTS:
         try:
             webhook = await api.create_webhook(event, ha_webhook_url)
-            ghost_wh_id = webhook.get("id")
-            if ghost_wh_id:
+            if ghost_wh_id := webhook.get("id"):
                 ghost_webhook_ids.append(ghost_wh_id)
                 _LOGGER.debug("Created Ghost webhook for %s: %s", event, ghost_wh_id)
-        except Exception as err:
+        except GhostError as err:
             _LOGGER.warning("Failed to create webhook for %s: %s", event, err)
-    
-    # Store webhook IDs for cleanup
-    hass.data[DOMAIN][entry.entry_id][GHOST_WEBHOOK_IDS] = ghost_webhook_ids
+
     _LOGGER.info("Created %d Ghost webhooks", len(ghost_webhook_ids))
+    return ghost_webhook_ids
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: GhostConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
-        coordinator = entry_data["coordinator"]
-        
-        # Clean up Ghost webhooks
-        ghost_webhook_ids = entry_data.get(GHOST_WEBHOOK_IDS, [])
-        for webhook_id in ghost_webhook_ids:
+        runtime_data = entry.runtime_data
+
+        for webhook_id in runtime_data.ghost_webhook_ids:
             try:
-                await coordinator.api.delete_webhook(webhook_id)
+                await runtime_data.api.delete_webhook(webhook_id)
                 _LOGGER.debug("Deleted Ghost webhook %s", webhook_id)
-            except Exception as err:
+            except GhostError as err:
                 _LOGGER.warning("Failed to delete Ghost webhook %s: %s", webhook_id, err)
-        
-        # Unregister HA webhook if it was enabled
-        if entry_data.get(WEBHOOKS_ENABLED):
+
+        if runtime_data.webhooks_enabled:
             async_unregister_webhook(hass, entry.entry_id)
-        
-        await coordinator.api.close()
+
+        await runtime_data.api.close()
 
     return unload_ok

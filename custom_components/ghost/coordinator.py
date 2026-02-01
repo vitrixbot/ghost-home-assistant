@@ -1,20 +1,31 @@
 """DataUpdateCoordinator for Ghost."""
 
+from __future__ import annotations
+
 import asyncio
 from datetime import timedelta
 import logging
+from typing import TYPE_CHECKING
+
+from aioghost import GhostAdminAPI
+from aioghost.exceptions import GhostAuthError, GhostError
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import GhostAdminAPI
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+
+if TYPE_CHECKING:
+    from . import GhostConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class GhostDataUpdateCoordinator(DataUpdateCoordinator):
+class GhostDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     """Class to manage fetching Ghost data."""
+
+    config_entry: GhostConfigEntry
 
     def __init__(
         self,
@@ -36,7 +47,6 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         """Fetch data from Ghost API."""
         try:
-            # Parallelize all API calls for faster updates
             (
                 site,
                 posts,
@@ -70,5 +80,7 @@ class GhostDataUpdateCoordinator(DataUpdateCoordinator):
                 "comments": comments,
                 "newsletters": newsletters,
             }
-        except Exception as err:
+        except GhostAuthError as err:
+            raise ConfigEntryAuthFailed("Invalid API key") from err
+        except GhostError as err:
             raise UpdateFailed(f"Error communicating with Ghost API: {err}") from err

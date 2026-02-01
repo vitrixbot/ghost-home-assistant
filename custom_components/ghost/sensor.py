@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -20,24 +20,31 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import GhostDataUpdateCoordinator
 
+if TYPE_CHECKING:
+    from . import GhostConfigEntry
 
-def _get_device_info(coordinator: GhostDataUpdateCoordinator, entry: ConfigEntry) -> dict:
+# Coordinator handles batching, no limit needed
+PARALLEL_UPDATES = 0
+
+
+def _get_device_info(
+    coordinator: GhostDataUpdateCoordinator, entry: GhostConfigEntry
+) -> dict:
     """Get device info for Ghost sensors."""
     return {
         "identifiers": {(DOMAIN, entry.entry_id)},
         "name": coordinator.site_title,
         "manufacturer": "Ghost Foundation",
         "model": "Ghost",
-        "configuration_url": coordinator.api.site_url,
+        "configuration_url": coordinator.api.api_url,
     }
 
 
 def _get_mrr_value(data: dict) -> int | None:
-    """Extract MRR value from coordinator data, converting cents to whole dollars."""
+    """Extract MRR value, converting cents to whole dollars."""
     mrr_data = data.get("mrr", {})
     if not mrr_data:
         return None
-    # Get first currency's value (usually USD), convert cents to dollars
     first_value = next(iter(mrr_data.values()), None)
     return round(first_value / 100) if first_value else None
 
@@ -50,6 +57,7 @@ class GhostSensorEntityDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[GhostSensorEntityDescription, ...] = (
+    # Core member metrics
     GhostSensorEntityDescription(
         key="total_members",
         translation_key="total_members",
@@ -80,110 +88,10 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         name="Comped Members",
         icon="mdi:account-star",
         state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.get("members", {}).get("comped", 0),
     ),
-    GhostSensorEntityDescription(
-        key="published_posts",
-        translation_key="published_posts",
-        name="Published Posts",
-        icon="mdi:post",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("published", 0),
-    ),
-    GhostSensorEntityDescription(
-        key="draft_posts",
-        translation_key="draft_posts",
-        name="Draft Posts",
-        icon="mdi:file-edit-outline",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("drafts", 0),
-    ),
-    GhostSensorEntityDescription(
-        key="scheduled_posts",
-        translation_key="scheduled_posts",
-        name="Scheduled Posts",
-        icon="mdi:clock-outline",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("posts", {}).get("scheduled", 0),
-    ),
-    GhostSensorEntityDescription(
-        key="latest_post",
-        translation_key="latest_post",
-        name="Latest Post",
-        icon="mdi:newspaper",
-        value_fn=lambda data: data.get("latest_post", {}).get("title") if data.get("latest_post") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email",
-        translation_key="latest_email",
-        name="Latest Email",
-        icon="mdi:email-newsletter",
-        value_fn=lambda data: data.get("latest_email", {}).get("title") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email_sent",
-        translation_key="latest_email_sent",
-        name="Latest Email Sent",
-        icon="mdi:send",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("latest_email", {}).get("email_count") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email_opened",
-        translation_key="latest_email_opened",
-        name="Latest Email Opened",
-        icon="mdi:email-open",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("latest_email", {}).get("opened_count") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email_open_rate",
-        translation_key="latest_email_open_rate",
-        name="Latest Email Open Rate",
-        icon="mdi:email-open-outline",
-        native_unit_of_measurement="%",
-        value_fn=lambda data: data.get("latest_email", {}).get("open_rate") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email_clicked",
-        translation_key="latest_email_clicked",
-        name="Latest Email Clicked",
-        icon="mdi:cursor-default-click",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("latest_email", {}).get("clicked_count") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="latest_email_click_rate",
-        translation_key="latest_email_click_rate",
-        name="Latest Email Click Rate",
-        icon="mdi:cursor-default-click-outline",
-        native_unit_of_measurement="%",
-        value_fn=lambda data: data.get("latest_email", {}).get("click_rate") if data.get("latest_email") else None,
-    ),
-    GhostSensorEntityDescription(
-        key="socialweb_followers",
-        translation_key="socialweb_followers",
-        name="SocialWeb Followers",
-        icon="mdi:account-multiple",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("activitypub", {}).get("followers", 0),
-    ),
-    GhostSensorEntityDescription(
-        key="socialweb_following",
-        translation_key="socialweb_following",
-        name="SocialWeb Following",
-        icon="mdi:account-multiple-outline",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
-    ),
-    GhostSensorEntityDescription(
-        key="total_comments",
-        translation_key="total_comments",
-        name="Total Comments",
-        icon="mdi:comment-multiple",
-        state_class=SensorStateClass.TOTAL,
-        value_fn=lambda data: data.get("comments", 0),
-    ),
+    # Revenue metrics
     GhostSensorEntityDescription(
         key="mrr",
         translation_key="mrr",
@@ -204,28 +112,167 @@ SENSORS: tuple[GhostSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement="USD",
         suggested_display_precision=0,
-        # Use walrus operator to call _get_mrr_value only once per access
         value_fn=lambda data: (mrr := _get_mrr_value(data)) and mrr * 12,
+    ),
+    # Post metrics
+    GhostSensorEntityDescription(
+        key="published_posts",
+        translation_key="published_posts",
+        name="Published Posts",
+        icon="mdi:post",
+        state_class=SensorStateClass.TOTAL,
+        value_fn=lambda data: data.get("posts", {}).get("published", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="draft_posts",
+        translation_key="draft_posts",
+        name="Draft Posts",
+        icon="mdi:file-edit-outline",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("posts", {}).get("drafts", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="scheduled_posts",
+        translation_key="scheduled_posts",
+        name="Scheduled Posts",
+        icon="mdi:clock-outline",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("posts", {}).get("scheduled", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_post",
+        translation_key="latest_post",
+        name="Latest Post",
+        icon="mdi:newspaper",
+        value_fn=lambda data: (
+            data.get("latest_post", {}).get("title")
+            if data.get("latest_post")
+            else None
+        ),
+    ),
+    # Email metrics
+    GhostSensorEntityDescription(
+        key="latest_email",
+        translation_key="latest_email",
+        name="Latest Email",
+        icon="mdi:email-newsletter",
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("title")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_sent",
+        translation_key="latest_email_sent",
+        name="Latest Email Sent",
+        icon="mdi:send",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("email_count")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_opened",
+        translation_key="latest_email_opened",
+        name="Latest Email Opened",
+        icon="mdi:email-open",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("opened_count")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_open_rate",
+        translation_key="latest_email_open_rate",
+        name="Latest Email Open Rate",
+        icon="mdi:email-open-outline",
+        native_unit_of_measurement="%",
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("open_rate")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_clicked",
+        translation_key="latest_email_clicked",
+        name="Latest Email Clicked",
+        icon="mdi:cursor-default-click",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("clicked_count")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    GhostSensorEntityDescription(
+        key="latest_email_click_rate",
+        translation_key="latest_email_click_rate",
+        name="Latest Email Click Rate",
+        icon="mdi:cursor-default-click-outline",
+        native_unit_of_measurement="%",
+        value_fn=lambda data: (
+            data.get("latest_email", {}).get("click_rate")
+            if data.get("latest_email")
+            else None
+        ),
+    ),
+    # Social/ActivityPub metrics
+    GhostSensorEntityDescription(
+        key="socialweb_followers",
+        translation_key="socialweb_followers",
+        name="SocialWeb Followers",
+        icon="mdi:account-multiple",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("activitypub", {}).get("followers", 0),
+    ),
+    GhostSensorEntityDescription(
+        key="socialweb_following",
+        translation_key="socialweb_following",
+        name="SocialWeb Following",
+        icon="mdi:account-multiple-outline",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("activitypub", {}).get("following", 0),
+    ),
+    # Engagement metrics
+    GhostSensorEntityDescription(
+        key="total_comments",
+        translation_key="total_comments",
+        name="Total Comments",
+        icon="mdi:comment-multiple",
+        state_class=SensorStateClass.TOTAL,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.get("comments", 0),
     ),
 )
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: GhostConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Ghost sensors based on a config entry."""
-    coordinator: GhostDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    
-    entities = [
-        GhostSensorEntity(coordinator, description, entry)
-        for description in SENSORS
+    coordinator = entry.runtime_data.coordinator
+
+    entities: list[GhostSensorEntity | GhostNewsletterSensorEntity] = [
+        GhostSensorEntity(coordinator, description, entry) for description in SENSORS
     ]
-    
+
     # Add dynamic newsletter sensors (active only)
-    newsletters = coordinator.data.get("newsletters", [])
-    for newsletter in newsletters:
+    for newsletter in coordinator.data.get("newsletters", []):
         newsletter_id = newsletter.get("id")
         newsletter_name = newsletter.get("name", "Newsletter")
         newsletter_status = newsletter.get("status")
@@ -235,7 +282,7 @@ async def async_setup_entry(
                     coordinator, entry, newsletter_id, newsletter_name
                 )
             )
-    
+
     async_add_entities(entities)
 
 
@@ -249,7 +296,7 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
         self,
         coordinator: GhostDataUpdateCoordinator,
         description: GhostSensorEntityDescription,
-        entry: ConfigEntry,
+        entry: GhostConfigEntry,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -266,16 +313,14 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
         if self.entity_description.key == "latest_post":
-            post = self.coordinator.data.get("latest_post")
-            if post:
+            if post := self.coordinator.data.get("latest_post"):
                 return {
                     "url": post.get("url"),
                     "published_at": post.get("published_at"),
                     "slug": post.get("slug"),
                 }
         elif self.entity_description.key == "latest_email":
-            email = self.coordinator.data.get("latest_email")
-            if email:
+            if email := self.coordinator.data.get("latest_email"):
                 return {
                     "subject": email.get("subject"),
                     "sent_at": email.get("submitted_at"),
@@ -290,7 +335,9 @@ class GhostSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEnt
         return None
 
 
-class GhostNewsletterSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator], SensorEntity):
+class GhostNewsletterSensorEntity(
+    CoordinatorEntity[GhostDataUpdateCoordinator], SensorEntity
+):
     """Representation of a Ghost newsletter subscriber sensor."""
 
     _attr_has_entity_name = True
@@ -300,7 +347,7 @@ class GhostNewsletterSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator],
     def __init__(
         self,
         coordinator: GhostDataUpdateCoordinator,
-        entry: ConfigEntry,
+        entry: GhostConfigEntry,
         newsletter_id: str,
         newsletter_name: str,
     ) -> None:
@@ -315,22 +362,21 @@ class GhostNewsletterSensorEntity(CoordinatorEntity[GhostDataUpdateCoordinator],
     def _get_newsletter_by_id(self) -> dict | None:
         """Get newsletter data by ID."""
         newsletters = self.coordinator.data.get("newsletters", [])
-        return next((n for n in newsletters if n.get("id") == self._newsletter_id), None)
+        return next(
+            (n for n in newsletters if n.get("id") == self._newsletter_id), None
+        )
 
     @property
     def native_value(self) -> int | None:
         """Return the subscriber count for this newsletter."""
-        newsletter = self._get_newsletter_by_id()
-        if newsletter:
-            count = newsletter.get("count", {})
-            return count.get("members", 0)
+        if newsletter := self._get_newsletter_by_id():
+            return newsletter.get("count", {}).get("members", 0)
         return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        newsletter = self._get_newsletter_by_id()
-        if newsletter:
+        if newsletter := self._get_newsletter_by_id():
             return {
                 "newsletter_id": self._newsletter_id,
                 "status": newsletter.get("status"),
