@@ -18,8 +18,8 @@ The **Ghost** {% term integration %} allows you to monitor your [Ghost](https://
 
 ## Prerequisites
 
-- A Ghost site (self-hosted or Ghost(Pro))
-- Admin API access to your Ghost site
+- A Ghost site
+- A Ghost administrator staff user account
 
 ### Create a Ghost Admin API integration
 
@@ -27,7 +27,8 @@ The **Ghost** {% term integration %} allows you to monitor your [Ghost](https://
 2. Go to **Settings** → **Integrations**.
 3. Select **Add custom integration**.
 4. Give it a name (e.g., "Home Assistant").
-5. Copy the **Admin API Key** — you'll need this during setup.
+5. Copy the **API URL**.
+6. Copy the **Admin API Key**.
 
 {% include integrations/config_flow.md %}
 
